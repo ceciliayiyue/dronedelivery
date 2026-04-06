@@ -1,8 +1,6 @@
 import { Product, Scenario } from "@/lib/types";
 
 export const products: Product[] = [
-  { id: "milk", name: "Whole Milk", weight: 1, price: 4.29, droneEligible: true, category: "Dairy" },
-  { id: "eggs", name: "Free Range Eggs", weight: 1.1, price: 5.49, droneEligible: true, category: "Dairy" },
   { id: "granola", name: "Granola Bars", weight: 0.8, price: 3.99, droneEligible: true, category: "Snacks" },
   { id: "chips", name: "Sea Salt Chips", weight: 0.7, price: 4.49, droneEligible: true, category: "Snacks" },
   { id: "cough-meds", name: "Cold Relief Medicine", weight: 0.4, price: 8.99, droneEligible: true, category: "Medicine" },
@@ -22,7 +20,7 @@ export const scenarios: Scenario[] = [
     id: "drone-success",
     title: "Scenario 1",
     description: "Eligible urgent order that works with drone delivery.",
-    itemIds: ["milk", "eggs", "cough-meds"],
+    itemIds: ["bandages", "cough-meds", "coffee"],
     recommendedMode: "drone",
   },
   {
@@ -31,12 +29,5 @@ export const scenarios: Scenario[] = [
     description: "Heavy basket that only qualifies for standard delivery.",
     itemIds: ["water-pack", "bulk-rice"],
     recommendedMode: "standard",
-  },
-  {
-    id: "drone-fallback",
-    title: "Scenario 3",
-    description: "Eligible order that should fallback when the drone toggle is off.",
-    itemIds: ["chips", "bandages", "bananas"],
-    recommendedMode: "drone",
   },
 ];

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAppState } from "@/components/app-state-provider";
 import { checkDroneEligibility } from "@/lib/eligibility";
 import { Order, Product } from "@/lib/types";
@@ -58,19 +58,6 @@ export function MvpApp() {
   return (
     <main className="min-h-screen bg-[#f4f1eb] px-4 py-8">
       <div className="mx-auto flex max-w-md flex-col items-center gap-6">
-        <div className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#6b8672]">
-            Instacart drone pilot
-          </p>
-          <h1 className="mt-2 font-display text-3xl text-[#143323]">
-            Mobile-first web app for customers and shoppers
-          </h1>
-          <p className="mt-2 text-sm text-[#5a7b65]">
-            Pick a role, then follow the full delivery journey from eligibility through dispatch
-            and tracking.
-          </p>
-        </div>
-
         <PhoneShell>
           <StatusBar />
           <TopBar
@@ -269,6 +256,11 @@ function CustomerFlow({
   onLoadScenario: ReturnType<typeof useAppState>["loadScenario"];
   onSwitchRole: () => void;
 }) {
+  const [showDroneOnly, setShowDroneOnly] = useState(false);
+  const visibleProducts = showDroneOnly
+    ? products.filter((product) => product.droneEligible)
+    : products;
+
   return (
     <div className="px-6 pb-8">
       <div className="flex items-center justify-between rounded-[1.2rem] bg-[#f3f0ea] px-4 py-2 text-xs font-semibold text-[#5a7b65]">
@@ -306,6 +298,20 @@ function CustomerFlow({
 
       {customerStep === "catalog" && (
         <div className="mt-5 space-y-4">
+          <div className="rounded-[1.2rem] border border-[#e2efe0] bg-white p-3">
+            <button
+              type="button"
+              onClick={() => setShowDroneOnly((value) => !value)}
+              className={`w-full rounded-[1rem] border px-4 py-2 text-sm font-semibold transition ${
+                showDroneOnly
+                  ? "border-[#1a5f3b] bg-[#edf6e8] text-[#1a5f3b]"
+                  : "border-[#e2efe0] bg-[#faf8f2] text-[#4d6d59]"
+              }`}
+            >
+              {showDroneOnly ? "Showing drone-eligible products" : "Filter: drone-eligible only"}
+            </button>
+          </div>
+
           <div className="grid gap-2">
             {scenarios.map((scenario) => (
               <button
@@ -320,46 +326,82 @@ function CustomerFlow({
             ))}
           </div>
 
-          <div className="grid gap-3">
-            {products.map((product) => (
-              <article
-                key={product.id}
-                className="rounded-[1.4rem] border border-[#dbe9d6] bg-white p-4 shadow-[0_10px_24px_rgba(24,60,40,0.08)]"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6b8672]">
-                      {product.category}
-                    </p>
-                    <h3 className="mt-1 text-sm font-semibold text-[#17301f]">
-                      {product.name}
-                    </h3>
-                  </div>
-                  <span
-                    className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
-                      product.droneEligible
-                        ? "bg-[#e6f4d9] text-[#2c6b36]"
-                        : "bg-[#fff3e2] text-[#9b6216]"
-                    }`}
-                  >
-                    {product.droneEligible ? "Drone eligible" : "Ground only"}
-                  </span>
-                </div>
+          {cartSummary.itemCount > 0 && (
+            <button
+              type="button"
+              onClick={() => onGoToStep("cart")}
+              className="w-full rounded-[1.1rem] bg-[#1a5f3b] px-4 py-3 text-sm font-semibold text-white"
+            >
+              View cart ({cartSummary.itemCount})
+            </button>
+          )}
 
-                <div className="mt-3 flex items-center justify-between text-xs text-[#5a7b65]">
-                  <span>
-                    {formatCurrency(product.price)} · {product.weight} lb
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onAddToCart(product)}
-                    className="h-9 rounded-full bg-[#1a5f3b] px-4 text-xs font-semibold text-white"
-                  >
-                    Add
-                  </button>
-                </div>
-              </article>
-            ))}
+          <div className="grid gap-3">
+            {visibleProducts.map((product) => {
+              const cartItem = cart.find((item) => item.id === product.id);
+
+              return (
+                <article
+                  key={product.id}
+                  className="rounded-[1.4rem] border border-[#dbe9d6] bg-white p-4 shadow-[0_10px_24px_rgba(24,60,40,0.08)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6b8672]">
+                        {product.category}
+                      </p>
+                      <h3 className="mt-1 text-sm font-semibold text-[#17301f]">
+                        {product.name}
+                      </h3>
+                    </div>
+                    <span
+                      className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
+                        product.droneEligible
+                          ? "bg-[#e6f4d9] text-[#2c6b36]"
+                          : "bg-[#fff3e2] text-[#9b6216]"
+                      }`}
+                    >
+                      {product.droneEligible ? "Drone eligible" : "Ground only"}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between text-xs text-[#5a7b65]">
+                    <span>
+                      {formatCurrency(product.price)} · {product.weight} lb
+                    </span>
+                    {cartItem ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onUpdateQuantity(product.id, -1)}
+                          className="h-8 w-8 rounded-full bg-[#edf6e8] text-sm font-semibold text-[#1a5f3b]"
+                        >
+                          -
+                        </button>
+                        <span className="min-w-5 text-center text-sm font-semibold text-[#17301f]">
+                          {cartItem.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onAddToCart(product)}
+                          className="h-8 w-8 rounded-full bg-[#1a5f3b] text-sm font-semibold text-white"
+                        >
+                          +
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onAddToCart(product)}
+                        className="h-9 rounded-full bg-[#1a5f3b] px-4 text-xs font-semibold text-white"
+                      >
+                        Add
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </div>
       )}
@@ -469,6 +511,15 @@ function CustomerFlow({
             enabled
             description="Ground courier delivery."
             onSelect={() => onPlaceOrder("standard")}
+          />
+          <DeliveryOptionCard
+            title="Sidewalk Robot"
+            eta="30–40 min"
+            price="$3.49"
+            enabled={false}
+            description="Autonomous sidewalk robot delivery."
+            note="Temporarily unavailable in your location"
+            onSelect={() => {}}
           />
 
           <div className="rounded-[1.2rem] border border-[#e2efe0] bg-white px-4 py-3 text-sm text-[#365646]">
@@ -743,6 +794,14 @@ function DeliveryOptionCard({
 }
 
 function OrderTracking({ order }: { order: Order }) {
+  if (order.deliveryMode === "standard" || order.status === "fallback") {
+    return <StandardOrderTracking order={order} />;
+  }
+
+  return <DroneOrderTracking order={order} />;
+}
+
+function DroneOrderTracking({ order }: { order: Order }) {
   const activeIndex =
     order.status === "fallback"
       ? 2
@@ -777,6 +836,47 @@ function OrderTracking({ order }: { order: Order }) {
                 complete
                   ? "border-[#cfe5c9] bg-[#f4fbf1] text-[#1a5f3b]"
                   : "border-[#e2efe0] bg-white text-[#6a8772]"
+              }`}
+            >
+              {stage.label}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StandardOrderTracking({ order }: { order: Order }) {
+  const activeIndex = trackingStages.findIndex((stage) => stage.key === order.status);
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-[1.2rem] bg-white px-4 py-3 text-sm text-[#365646] shadow-[0_12px_28px_rgba(20,40,25,0.08)]">
+        Courier is on the way with your order.
+      </div>
+
+      <div className="overflow-hidden rounded-[1.3rem] border border-[#e2efe0] bg-white">
+        <div className="h-40 bg-[linear-gradient(135deg,#7a7f86,#a2a8b0)]" />
+        <div className="border-t border-[#e2efe0] px-4 py-3 text-center text-sm text-[#365646]">
+          Arriving in 20 min
+        </div>
+        <div className="h-48 bg-[radial-gradient(circle_at_20%_20%,rgba(120,128,138,0.2),transparent_40%),radial-gradient(circle_at_70%_70%,rgba(120,128,138,0.16),transparent_45%),linear-gradient(180deg,#f3f4f6,#e6e8eb)]" />
+        <div className="border-t border-[#e2efe0] px-4 py-3 text-xs text-[#5a7b65]">
+          Standard delivery route active
+        </div>
+      </div>
+
+      <div className="grid gap-3">
+        {trackingStages.map((stage, index) => {
+          const complete = index <= activeIndex || order.status === "delivered";
+          return (
+            <div
+              key={stage.key}
+              className={`rounded-[1.1rem] border px-4 py-3 text-sm ${
+                complete
+                  ? "border-[#d5dae0] bg-[#f6f7f9] text-[#38424f]"
+                  : "border-[#e2e5ea] bg-white text-[#6f7b88]"
               }`}
             >
               {stage.label}
