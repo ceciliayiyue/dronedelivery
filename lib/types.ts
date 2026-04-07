@@ -40,6 +40,8 @@ export type Order = {
   status: OrderStatus;
   eta: string;
   eligibilityReason: string;
+  /** Fixed MM:SS SLA clock for seeded demo orders; optional for live orders. */
+  slaDisplay?: string;
   fallbackReason?: string;
   pickedAt?: string | null;
   createdAt: string;

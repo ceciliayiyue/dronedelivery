@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { products, scenarios } from "@/lib/data";
+import { seedExampleDroneOrders } from "@/lib/seed-orders";
 import { checkDroneEligibility } from "@/lib/eligibility";
 import {
   CartItem,
@@ -52,14 +53,13 @@ const AppStateContext = createContext<AppStateValue | null>(null);
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>(() => [...seedExampleDroneOrders]);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>("ORD-4321");
+  const nextOrderId = useRef(4323);
   const [customerStep, setCustomerStep] = useState<CustomerStep>("catalog");
   const [droneAvailable, setDroneAvailable] = useState(true);
   const [activeRole, setActiveRole] = useState<AppRole>("home");
-  const nextOrderId = useRef(1001);
-
   function addToCart(product: Product) {
     setCart((current) => {
       const existing = current.find((item) => item.id === product.id);

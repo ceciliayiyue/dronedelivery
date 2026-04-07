@@ -591,13 +591,15 @@ function ShopperFlow({
   onDelivered: ReturnType<typeof useAppState>["markDelivered"];
   onSwitchRole: () => void;
 }) {
+  const [queueTab, setQueueTab] = useState<"drone" | "standard">("drone");
   const droneOrders = orders.filter((order) => order.deliveryMode === "drone");
   const standardOrders = orders.filter((order) => order.deliveryMode === "standard");
+  const tabOrders = queueTab === "drone" ? droneOrders : standardOrders;
 
   return (
     <div className="px-6 pb-8">
       <div className="flex items-center justify-between rounded-[1.1rem] bg-[#f5f2ec] px-4 py-2 text-xs font-semibold text-[#5a7b65]">
-        <span>Shopper dashboard</span>
+        <span>Assigned work queue</span>
         <button
           type="button"
           onClick={onSwitchRole}
@@ -632,48 +634,48 @@ function ShopperFlow({
         </button>
       </div>
 
-      <div className="mt-4 rounded-[1.2rem] bg-[#ede7dd] p-1 text-xs font-semibold text-[#6a8772]">
-        <div className="grid grid-cols-2 gap-1">
-          <div className="rounded-full bg-white px-3 py-2 text-center text-[#1a5f3b] shadow">
-            Drone Priority ({droneOrders.length})
-          </div>
-          <div className="rounded-full px-3 py-2 text-center">Standard ({standardOrders.length})</div>
-        </div>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => setQueueTab("drone")}
+          className={`flex items-center justify-center gap-1.5 rounded-[1.15rem] border px-3 py-2.5 text-[12px] font-semibold transition ${
+            queueTab === "drone"
+              ? "border-[#1a5f3b] bg-white text-[#1a5f3b] shadow-[0_4px_14px_rgba(26,95,59,0.12)]"
+              : "border-transparent bg-[#e8ebe4] text-[#5a6b62]"
+          }`}
+        >
+          <ShopperDroneGlyph className="h-4 w-4 shrink-0" active={queueTab === "drone"} />
+          <span className="truncate">Drone Priority ({droneOrders.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setQueueTab("standard")}
+          className={`flex items-center justify-center gap-1.5 rounded-[1.15rem] border px-3 py-2.5 text-[12px] font-semibold transition ${
+            queueTab === "standard"
+              ? "border-[#1a5f3b] bg-white text-[#1a5f3b] shadow-[0_4px_14px_rgba(26,95,59,0.12)]"
+              : "border-transparent bg-[#e8ebe4] text-[#5a6b62]"
+          }`}
+        >
+          <ShopperTruckGlyph className="h-4 w-4 shrink-0" active={queueTab === "standard"} />
+          <span className="truncate">Standard ({standardOrders.length})</span>
+        </button>
       </div>
 
       <div className="mt-4 space-y-3">
-        {(orders.length ? orders : []).map((order) => (
-          <button
-            key={order.id}
-            type="button"
-            onClick={() => onSelectOrder(order.id)}
-            className={`w-full rounded-[1.2rem] border px-4 py-3 text-left ${
-              selectedOrder?.id === order.id
-                ? "border-[#1a5f3b] bg-[#f7fbf5]"
-                : "border-[#e2efe0] bg-white"
-            }`}
-          >
-            <div className="flex items-center justify-between text-xs text-[#6a8772]">
-              <span className="font-semibold uppercase tracking-[0.2em] text-[#6a8772]">
-                {order.deliveryMode === "drone" ? "Drone" : "Standard"} · {order.id}
-              </span>
-              <span className="text-[#b36a2d]">
-                {order.deliveryMode === "drone" ? "3:45" : "12:20"}
-              </span>
-            </div>
-            <p className="mt-2 text-sm font-semibold text-[#17301f]">
-              {order.itemCount} items · {order.totalWeight} lbs
-            </p>
-            <div className="mt-2 flex items-center justify-between text-xs text-[#5a7b65]">
-              <span>{order.deliveryMode === "drone" ? "Backyard - clear area" : "Leave at door"}</span>
-              <span className="text-[#1a5f3b]">→</span>
-            </div>
-          </button>
-        ))}
-
-        {!orders.length && (
+        {tabOrders.length ? (
+          tabOrders.map((order) => (
+            <ShopperQueueOrderCard
+              key={order.id}
+              order={order}
+              selected={selectedOrder?.id === order.id}
+              onSelect={() => onSelectOrder(order.id)}
+            />
+          ))
+        ) : (
           <div className="rounded-[1.2rem] border border-dashed border-[#d6e8d4] bg-white px-4 py-8 text-center text-xs text-[#6a8772]">
-            New orders will appear after checkout.
+            {queueTab === "drone"
+              ? "No drone orders in queue. Check Standard or wait for new assignments."
+              : "No standard orders in queue. Check Drone or wait for new assignments."}
           </div>
         )}
       </div>
@@ -738,6 +740,154 @@ function ShopperFlow({
         Start picking
       </button>
     </div>
+  );
+}
+
+function shopperOrderShortId(id: string) {
+  return id.replace(/^ORD-/, "#");
+}
+
+/** Deterministic SLA-style clock for demo (orange timer in queue cards). */
+function shopperSlaClock(order: Order): string {
+  if (order.slaDisplay) return order.slaDisplay;
+  const n = order.id.replace(/\D/g, "") || "0";
+  const seed = Number.parseInt(n.slice(-4), 10) || 1234;
+  if (order.deliveryMode === "drone") {
+    const mins = 3 + (seed % 5);
+    const secs = seed % 60;
+    return `${mins}:${String(secs).padStart(2, "0")}`;
+  }
+  const mins = 10 + (seed % 20);
+  const secs = (seed * 7) % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
+function ShopperQueueOrderCard({
+  order,
+  selected,
+  onSelect,
+}: {
+  order: Order;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const isDrone = order.deliveryMode === "drone";
+  const sla = shopperSlaClock(order);
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full rounded-[1.35rem] border bg-white px-4 py-3.5 text-left shadow-[0_10px_28px_rgba(20,40,25,0.06)] transition ${
+        selected ? "border-[#1a5f3b] ring-1 ring-[#1a5f3b]/25" : "border-[#e6e9e4]"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span
+          className={`inline-flex max-w-[72%] items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+            isDrone ? "bg-[#e6f4d9] text-[#2c6b36]" : "bg-[#e8eaed] text-[#4a4f55]"
+          }`}
+        >
+          {isDrone ? (
+            <ShopperDroneGlyph className="h-3.5 w-3.5 shrink-0" active />
+          ) : (
+            <ShopperTruckGlyph className="h-3.5 w-3.5 shrink-0" active />
+          )}
+          <span className="truncate">
+            {isDrone ? "Drone" : "Standard"} · {shopperOrderShortId(order.id)}
+          </span>
+        </span>
+        <span className="shrink-0 text-[15px] font-bold tabular-nums text-[#e07020]">{sla}</span>
+      </div>
+
+      <p className="mt-3 text-[15px] font-bold leading-tight text-[#17301f]">
+        {order.itemCount} items · {order.totalWeight} lbs
+      </p>
+
+      <div className="mt-2 flex items-start gap-2 text-[12px] text-[#5a7b65]">
+        <span className="mt-0.5 shrink-0 text-[#6a8772]" aria-hidden>
+          📍
+        </span>
+        <span>
+          {isDrone ? "Backyard – clear area" : "Front door · leave at door (residential)"}
+        </span>
+      </div>
+
+      <div className="mt-1.5 flex items-start gap-2 text-[12px] text-[#5a7b65]">
+        <span className="mt-0.5 shrink-0 text-[#6a8772]" aria-hidden>
+          {isDrone ? "⚖" : "🚚"}
+        </span>
+        <span>{isDrone ? "≤ 5 lbs (drone limit)" : "Ground courier · no drone cap"}</span>
+      </div>
+
+      <div className="mt-3 border-t border-[#eef1ec] pt-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6b8672]">
+          Items to pick
+        </p>
+        <ul className="mt-2 space-y-1.5">
+          {order.items.map((line) => (
+            <li
+              key={`${order.id}-${line.id}`}
+              className="flex items-baseline justify-between gap-2 text-[12px] text-[#17301f]"
+            >
+              <span className="min-w-0 truncate">
+                <span className="font-semibold text-[#1a5f3b]">{line.quantity}×</span> {line.name}
+              </span>
+              <span className="shrink-0 text-[11px] text-[#6a8772]">
+                {line.weight} lb ea.
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mt-3 flex items-center justify-end">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e8ebe4] text-[#4d6d59]">
+          →
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function ShopperDroneGlyph({ className, active }: { className?: string; active?: boolean }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M12 3v3M7 8l-2-2M19 8l2-2M5 13h3M16 13h3M8 21h8l-1-7H9L8 21z"
+        stroke={active ? "#1a5f3b" : "#6a8772"}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="13" r="2.5" fill={active ? "#1a5f3b" : "#9aab9e"} />
+    </svg>
+  );
+}
+
+function ShopperTruckGlyph({ className, active }: { className?: string; active?: boolean }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M3 16h12V8H3v8zm12 0h3l2-4V8h-2M6 18.5a1.5 1.5 0 1 0 0 .01v-.01zm10 0a1.5 1.5 0 1 0 0 .01v-.01z"
+        stroke={active ? "#1a5f3b" : "#6a8772"}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
